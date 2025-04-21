@@ -1,0 +1,64 @@
+---
+title: "Daily Assignment 21"
+author: "Avery Eastman"
+format: html
+execute: 
+  echo: true
+---
+
+```{r}
+library(dataRetrieval)
+library(dplyr)
+library(tsibble)
+
+
+# Example: Cache la Poudre River at Mouth (USGS site 06752260)
+poudre_flow <- readNWISdv(siteNumber = "06752260",    # Download data from USGS for site 06752260
+                          parameterCd = "00060",      # Parameter code 00060 = discharge in cfs)
+                          startDate = "2013-01-01",   # Set the start date
+                          endDate = "2023-12-31") |>  # Set the end date
+  renameNWISColumns() |>                              # Rename columns to standard names (e.g., "Flow", "Date")
+  mutate(Date = yearmonth(Date)) |>                   # Convert daily Date values into a year-month format (e.g., "2023 Jan")
+  group_by(Date) |>                                   # Group the data by the new monthly Date
+  summarise(Flow = mean(Flow))                       # Calculate the average daily flow for each month
+```
+
+# Covert to tsibble
+
+### Use as_tsibble() to convert the data.frame into a tsibble object. This will allow you to use the feast functions for time series analysis
+```{r}
+poudre_tbl <- as_tsibble(poudre_flow)
+head(poudre_tbl)
+```
+
+# Plotting the time series
+
+### Use ggplot to plot the time series data. Animate this plot with plotly
+```{r}
+library(ggplot2)
+library(plotly)
+poudre_plot <- ggplot(poudre_tbl, aes(x = Date, y = Flow)) +
+  geom_line(color = "steelblue") +
+  labs(title = "Monthly Streamflow of Cache la Poudre River",
+       x = "Date", y = "Average Monthly Flow") +
+  theme_minimal()
+
+ggplotly(poudre_plot)
+```
+
+# Subseries
+
+### Use gg_subseries to visualize the seasonal patterns in the data. This will help you identify any trends or seasonal cycles in the streamflow data.
+```{r}
+library(feasts)
+
+gg_subseries(poudre_tbl) +
+  labs(title = "Monthly Streamflow",
+       x = "Year", y = "Flow") +
+  theme_minimal()
+```
+
+### Describe what you see in the plot. How are “seasons” defined in this plot? What do you think the “subseries” represent?
+The plot shows a seasonal pattern in streamflow for the Cache la Poudre River. You can see that streamflow peaks in May-June, which can be classified as late spring and early summer. This is most likely due to snow melt as the weather gets warmer in these months. You can also see that streamflow is lowest in November-Febuary, which can be classified as late fall and winter. 
+
+
